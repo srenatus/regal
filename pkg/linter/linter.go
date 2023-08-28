@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	eopa_vm "github.com/styrainc/enterprise-opa-private/pkg/rego_vm"
+
 	"github.com/gobwas/glob"
 	"github.com/imdario/mergo"
 
@@ -362,6 +364,7 @@ func (l Linter) prepareRegoArgs() []func(*rego.Rego) {
 	}
 
 	regoArgs = append(regoArgs,
+		rego.Target(eopa_vm.Target),
 		rego.ParsedQuery(query),
 		rego.ParsedBundle("regal_eval_params", &dataBundle),
 		// TODO: Only enable when --debug (or similar) is provided, as some optimizations are disabled by this.
