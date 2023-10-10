@@ -626,10 +626,21 @@ func (l Linter) lintWithRegoAggregateRules(
 		return report.Report{}, fmt.Errorf("failed preparing query for linting: %w", err)
 	}
 
+	agg := make(map[string]any, len(aggregates))
+
+	for k, v := range aggregates {
+		vs := make([]map[string]any, len(v))
+		for i, x := range v {
+			vs[i] = x
+		}
+
+		agg[k] = vs
+	}
+
 	input := map[string]any{
 		// This will be replaced by the routing policy to provide each
 		// aggregate rule only the aggregated data from the same rule
-		"aggregates_internal": aggregates,
+		"aggregates_internal": agg,
 		// There is no file provided in input here, but we'll provide *something* for
 		// consistency, and to avoid silently failing with undefined should someone
 		// refer to input.regal in an aggregate_report rule
