@@ -14,7 +14,7 @@ report contains violation if {
 
 	rule.head.value.type == "ref"
 
-	last := regal.last(rule.head.value.value)
+	last := ast.last(rule.head.value.value)
 
 	last.type == "var"
 	illegal_value_ref(last.value, rule)

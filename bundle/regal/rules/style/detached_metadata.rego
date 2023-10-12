@@ -14,7 +14,7 @@ report contains violation if {
 
 	startswith(trim_space(block[0].Text), "METADATA")
 
-	last_row := regal.last(block).Location.row
+	last_row := ast.last(block).Location.row
 
 	# no need to +1 the index here as rows start counting from 1
 	trim_space(input.regal.file.lines[last_row]) == ""

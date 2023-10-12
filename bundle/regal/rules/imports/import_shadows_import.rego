@@ -6,10 +6,11 @@ import future.keywords.contains
 import future.keywords.if
 import future.keywords.in
 
+import data.regal.ast
 import data.regal.result
 
 # regular import
-_ident(imported) := regal.last(path).value if {
+_ident(imported) := ast.last(path).value if {
 	not imported.alias
 	path := imported.path.value
 }

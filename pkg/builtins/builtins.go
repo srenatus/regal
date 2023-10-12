@@ -4,7 +4,6 @@ package builtins
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -38,17 +37,17 @@ var RegalJSONPrettyMeta = &rego.Function{
 	),
 }
 
-// RegalLastMeta metadata for regal.last.
-var RegalLastMeta = &rego.Function{
-	Name: "regal.last",
-	Decl: types.NewFunction(
-		types.Args(
-			types.Named("array", types.NewArray(nil, types.A)).
-				Description("performance optimized last index retrieval"),
-		),
-		types.Named("element", types.A),
-	),
-}
+// // RegalLastMeta metadata for regal.last.
+// var RegalLastMeta = &rego.Function{
+// 	Name: "regal.last",
+// 	Decl: types.NewFunction(
+// 		types.Args(
+// 			types.Named("array", types.NewArray(nil, types.A)).
+// 				Description("performance optimized last index retrieval"),
+// 		),
+// 		types.Named("element", types.A),
+// 	),
+// }
 
 // RegalParseModule regal.parse_module, like rego.parse_module but with location data included in AST.
 func RegalParseModule(_ rego.BuiltinContext, filename *ast.Term, policy *ast.Term) (*ast.Term, error) {
@@ -85,21 +84,21 @@ func RegalParseModule(_ rego.BuiltinContext, filename *ast.Term, policy *ast.Ter
 	return term, nil
 }
 
-var errAiob = errors.New("array index out of bounds")
+// var errAiob = errors.New("array index out of bounds")
 
-// RegalLast regal.last returns the last element of an array.
-func RegalLast(_ rego.BuiltinContext, arr *ast.Term) (*ast.Term, error) {
-	arrOp, err := builtins.ArrayOperand(arr.Value, 1)
-	if err != nil {
-		return nil, err
-	}
+// // RegalLast regal.last returns the last element of an array.
+// func RegalLast(_ rego.BuiltinContext, arr *ast.Term) (*ast.Term, error) {
+// 	arrOp, err := builtins.ArrayOperand(arr.Value, 1)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if arrOp.Len() == 0 {
-		return nil, errAiob
-	}
+// 	if arrOp.Len() == 0 {
+// 		return nil, errAiob
+// 	}
 
-	return arrOp.Elem(arrOp.Len() - 1), nil
-}
+// 	return arrOp.Elem(arrOp.Len() - 1), nil
+// }
 
 // RegalJSONPretty regal.json_pretty, like json.marshal but with pretty formatting.
 func RegalJSONPretty(_ rego.BuiltinContext, data *ast.Term) (*ast.Term, error) {
@@ -128,12 +127,12 @@ func TestContextBuiltins() []*tester.Builtin {
 			},
 			Func: rego.Function1(RegalJSONPrettyMeta, RegalJSONPretty),
 		},
-		{
-			Decl: &ast.Builtin{
-				Name: RegalLastMeta.Name,
-				Decl: RegalLastMeta.Decl,
-			},
-			Func: rego.Function1(RegalLastMeta, RegalLast),
-		},
+		// {
+		// 	Decl: &ast.Builtin{
+		// 		Name: RegalLastMeta.Name,
+		// 		Decl: RegalLastMeta.Decl,
+		// 	},
+		// 	Func: rego.Function1(RegalLastMeta, RegalLast),
+		// },
 	}
 }

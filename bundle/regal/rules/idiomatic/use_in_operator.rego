@@ -6,6 +6,7 @@ import future.keywords.contains
 import future.keywords.if
 import future.keywords.in
 
+import data.regal.ast
 import data.regal.result
 
 report contains violation if {
@@ -14,7 +15,7 @@ report contains violation if {
 	expr.terms[1].type in {"array", "boolean", "object", "null", "number", "set", "string", "var"}
 	expr.terms[2].type == "ref"
 
-	last := regal.last(expr.terms[2].value)
+	last := ast.last(expr.terms[2].value)
 
 	last.type == "var"
 	startswith(last.value, "$")
@@ -28,7 +29,7 @@ report contains violation if {
 	expr.terms[1].type == "ref"
 	expr.terms[2].type in {"array", "boolean", "object", "null", "number", "set", "string", "var"}
 
-	last := regal.last(expr.terms[1].value)
+	last := ast.last(expr.terms[1].value)
 
 	last.type == "var"
 	startswith(last.value, "$")

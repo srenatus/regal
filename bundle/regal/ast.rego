@@ -5,6 +5,8 @@ import future.keywords.every
 import future.keywords.if
 import future.keywords.in
 
+last(x) := x[count(x) - 1]
+
 scalar_types := {"boolean", "null", "number", "string"}
 
 # regal ignore:external-reference
@@ -218,7 +220,7 @@ _find_vars(_, value, _) := _find_object_comprehension_vars(value) if {
 find_some_decl_vars(rule) := [var |
 	walk(rule, [path, value])
 
-	regal.last(path) == "symbols"
+	last(path) == "symbols"
 	value[0].type != "call"
 
 	some var in _find_some_decl_vars(path, value)
@@ -231,7 +233,7 @@ find_some_decl_vars(rule) := [var |
 find_vars(node) := [var |
 	walk(node, [path, value])
 
-	some var in _find_vars(path, value, regal.last(path))
+	some var in _find_vars(path, value, last(path))
 ]
 
 _function_arg_names(rule) := {arg.value |

@@ -20,7 +20,7 @@ report contains violation if {
 	# to the function call
 	walk(input.rules, [path, value])
 
-	regal.last(path) == "terms"
+	ast.last(path) == "terms"
 
 	value[0].type == "ref"
 	value[0].value[0].type == "var"
@@ -33,5 +33,5 @@ report contains violation if {
 
 	ast.function_ret_in_args(fn_name, value)
 
-	violation := result.fail(rego.metadata.chain(), result.location(regal.last(value)))
+	violation := result.fail(rego.metadata.chain(), result.location(ast.last(value)))
 }

@@ -20,10 +20,11 @@ func Capabilities() *ast.Capabilities {
 			Name: builtins.RegalJSONPrettyMeta.Name,
 			Decl: builtins.RegalJSONPrettyMeta.Decl,
 		},
-		&ast.Builtin{
-			Name: builtins.RegalLastMeta.Name,
-			Decl: builtins.RegalLastMeta.Decl,
-		})
+		// &ast.Builtin{
+		// 	Name: builtins.RegalLastMeta.Name,
+		// 	Decl: builtins.RegalLastMeta.Decl,
+		// },
+	)
 
 	return caps
 }

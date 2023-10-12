@@ -459,7 +459,7 @@ func (l Linter) prepareRegoArgs(query ast.Body) []func(*rego.Rego) {
 		rego.ParsedBundle("regal_eval_params", &dataBundle),
 		rego.Function2(builtins.RegalParseModuleMeta, builtins.RegalParseModule),
 		rego.Function1(builtins.RegalJSONPrettyMeta, builtins.RegalJSONPretty),
-		rego.Function1(builtins.RegalLastMeta, builtins.RegalLast),
+		// rego.Function1(builtins.RegalLastMeta, builtins.RegalLast),
 	)
 
 	if l.debugMode && l.printHook == nil {
