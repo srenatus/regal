@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/Jeffail/tunny v0.1.4 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

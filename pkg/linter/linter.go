@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
 	"dario.cat/mergo"
+	"github.com/Jeffail/tunny"
 	"github.com/gobwas/glob"
 	"gopkg.in/yaml.v3"
 
@@ -495,6 +497,12 @@ func (l Linter) prepareRegoArgs(query ast.Body) []func(*rego.Rego) {
 	return regoArgs
 }
 
+type singleFile struct {
+	name    string
+	content string
+	module  *ast.Module
+}
+
 //nolint:gocognit
 func (l Linter) lintWithRegoRules(ctx context.Context, input rules.Input) (report.Report, error) {
 	l.startTimer(regalmetrics.RegalLintRego)
@@ -520,91 +528,100 @@ func (l Linter) lintWithRegoRules(ctx context.Context, input rules.Input) (repor
 	aggregate := report.Report{}
 	aggregate.Aggregates = make(map[string][]report.Aggregate)
 
-	var wg sync.WaitGroup
-
 	var mu sync.Mutex
 
-	errCh := make(chan error)
-	doneCh := make(chan bool)
+	numCPUs := runtime.NumCPU()
+	wg := sync.WaitGroup{}
 
-	for _, name := range input.FileNames {
+	pool := tunny.NewFunc(numCPUs, func(payload any) any {
+		defer wg.Done()
+		var err error
+
+		input, ok := payload.(singleFile)
+		if !ok {
+			return fmt.Errorf("unknown payload %T", payload)
+		}
+		enhancedAST, err := parse.EnhanceAST(input.name, input.content, input.module)
+		if err != nil {
+			return fmt.Errorf("failed preparing AST: %w", err)
+		}
+
+		evalArgs := []rego.EvalOption{
+			rego.EvalInput(enhancedAST),
+		}
+
+		if l.metrics != nil {
+			evalArgs = append(evalArgs, rego.EvalMetrics(l.metrics))
+		}
+
+		var prof *profiler.Profiler
+		if l.profiling {
+			prof = profiler.New()
+			evalArgs = append(evalArgs, rego.EvalQueryTracer(prof))
+		}
+
+		resultSet, err := pq.Eval(ctx, evalArgs...)
+		if err != nil {
+			return fmt.Errorf("error encountered in query evaluation %w", err)
+		}
+
+		result, err := resultSetToReport(resultSet)
+		if err != nil {
+			return fmt.Errorf("failed to convert result set to report: %w", err)
+		}
+
+		if l.profiling {
+			// Perhaps we'll want to make this number configurable later, but do note that
+			// this is only the top 10 locations for a *single* file, not the final report.
+			profRep := prof.ReportTopNResults(10, []string{"total_time_ns"})
+
+			result.AggregateProfile = make(map[string]report.ProfileEntry)
+
+			for _, rs := range profRep {
+				result.AggregateProfile[rs.Location.String()] = regalmetrics.FromExprStats(rs)
+			}
+		}
+
+		mu.Lock()
+		aggregate.Violations = append(aggregate.Violations, result.Violations...)
+
+		for k := range result.Aggregates {
+			aggregate.Aggregates[k] = append(aggregate.Aggregates[k], result.Aggregates[k]...)
+		}
+
+		if l.profiling {
+			aggregate.AddProfileEntries(result.AggregateProfile)
+		}
+		mu.Unlock()
+
+		return nil
+	})
+	defer pool.Close()
+
+	errCh := make(chan error)
+
+	for _, n := range input.FileNames {
 		wg.Add(1)
 
 		go func(name string) {
-			defer wg.Done()
-
-			enhancedAST, err := parse.EnhanceAST(name, input.FileContent[name], input.Modules[name])
-			if err != nil {
-				errCh <- fmt.Errorf("failed preparing AST: %w", err)
-
-				return
+			err, ctxErr := pool.ProcessCtx(ctx,
+				singleFile{name: name, content: input.FileContent[name], module: input.Modules[name]})
+			if ctxErr != nil {
+				errCh <- fmt.Errorf("context cancelled: %w", ctxErr)
 			}
 
-			evalArgs := []rego.EvalOption{
-				rego.EvalInput(enhancedAST),
+			if err, ok := err.(error); ok && err != nil {
+				errCh <- fmt.Errorf("error encountered in rule evaluation %w", err)
 			}
-
-			if l.metrics != nil {
-				evalArgs = append(evalArgs, rego.EvalMetrics(l.metrics))
-			}
-
-			var prof *profiler.Profiler
-			if l.profiling {
-				prof = profiler.New()
-				evalArgs = append(evalArgs, rego.EvalQueryTracer(prof))
-			}
-
-			resultSet, err := pq.Eval(ctx, evalArgs...)
-			if err != nil {
-				errCh <- fmt.Errorf("error encountered in query evaluation %w", err)
-
-				return
-			}
-
-			result, err := resultSetToReport(resultSet)
-			if err != nil {
-				errCh <- fmt.Errorf("failed to convert result set to report: %w", err)
-
-				return
-			}
-
-			if l.profiling {
-				// Perhaps we'll want to make this number configurable later, but do note that
-				// this is only the top 10 locations for a *single* file, not the final report.
-				profRep := prof.ReportTopNResults(10, []string{"total_time_ns"})
-
-				result.AggregateProfile = make(map[string]report.ProfileEntry)
-
-				for _, rs := range profRep {
-					result.AggregateProfile[rs.Location.String()] = regalmetrics.FromExprStats(rs)
-				}
-			}
-
-			mu.Lock()
-			aggregate.Violations = append(aggregate.Violations, result.Violations...)
-
-			for k := range result.Aggregates {
-				aggregate.Aggregates[k] = append(aggregate.Aggregates[k], result.Aggregates[k]...)
-			}
-
-			if l.profiling {
-				aggregate.AddProfileEntries(result.AggregateProfile)
-			}
-			mu.Unlock()
-		}(name)
+		}(n)
 	}
 
-	go func() {
-		wg.Wait()
-		doneCh <- true
-	}()
+	wg.Wait()
 
 	select {
-	case <-ctx.Done():
-		return report.Report{}, fmt.Errorf("context cancelled: %w", ctx.Err())
 	case err := <-errCh:
 		return report.Report{}, fmt.Errorf("error encountered in rule evaluation %w", err)
-	case <-doneCh:
+	default: // no errors
 		return aggregate, nil
 	}
 }
