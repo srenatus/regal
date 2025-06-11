@@ -24,7 +24,7 @@ items contains item if {
 	line := input.regal.file.lines[position.line]
 	word := location.ref_at(line, input.regal.context.location.col)
 
-	some [suggestion, type] in _matching_input_suggestions
+	some [suggestion, type, value] in _matching_input_suggestions
 
 	item := {
 		"label": suggestion,
@@ -32,7 +32,7 @@ items contains item if {
 		"detail": type,
 		"documentation": {
 			"kind": "markdown",
-			"value": sprintf("(inferred from [`input.json`](%s))", [input.regal.context.input_dot_json_path]),
+			"value": sprintf("`%v`", [value]),
 		},
 		"textEdit": {
 			"range": location.word_range(word, position),
@@ -41,7 +41,7 @@ items contains item if {
 	}
 }
 
-_matching_input_suggestions contains [suggestion, type] if {
+_matching_input_suggestions contains [suggestion, type, value] if {
 	position := location.to_position(input.regal.context.location)
 	line := input.regal.file.lines[position.line]
 
@@ -50,12 +50,12 @@ _matching_input_suggestions contains [suggestion, type] if {
 
 	word := location.ref_at(line, input.regal.context.location.col)
 
-	some [suggestion, type] in _input_paths
+	some [suggestion, type, value] in _input_paths
 
 	startswith(suggestion, word.text)
 }
 
-_input_paths contains [input_path, input_type] if {
+_input_paths contains [input_path, input_type, value] if {
 	walk(input.regal.context.input_dot_json, [path, value])
 
 	count(path) > 0
