@@ -2,8 +2,11 @@ package providers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/rego"
@@ -74,7 +77,21 @@ func (p *Policy) Run(
 
 	// TODO: Avoid the intermediate map[string]any step and unmarshal directly into ast.Value.
 	inputDotJSONPath, inputDotJSONContent := rio.FindInput(path, uri.ToPath(opts.ClientIdentifier, opts.RootURI))
-	if inputDotJSONPath != "" && inputDotJSONContent != nil {
+	if inputDotJSONContent == nil { // check ignored files in cache
+		for f, c := range c.GetAllIgnoredFiles() {
+			if filepath.Base(f) == "input.json" {
+				if err := json.NewDecoder(strings.NewReader(c)).Decode(&inputDotJSONContent); err != nil {
+					return nil, fmt.Errorf("decode %s: %w", f, err)
+				}
+
+				inputDotJSONPath = f
+
+				break
+			}
+		}
+	}
+
+	if inputDotJSONContent != nil { // we've got input json from file or cache
 		inputDotJSONValue, err := transform.ToOPAInputValue(inputDotJSONContent)
 		if err != nil {
 			return nil, fmt.Errorf("failed converting input dot JSON content to value: %w", err)
